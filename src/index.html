@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8" />
+<title>MelonClient</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ===== NAVBAR ===== -->
+  <header class="navbar">
+    <div class="brand">
+      <img src="assets/logo.png" alt="MelonClient" class="brand-logo" />
+      <span class="brand-text">MELON<span class="brand-accent">CLIENT</span></span>
+    </div>
+
+    <nav class="nav-links">
+      <button class="nav-link active" data-page="home">🏠 Home</button>
+      <button class="nav-link" data-page="profiles">📁 Profiles</button>
+      <button class="nav-link" data-page="accounts">👥 Accounts</button>
+      <button class="nav-link" data-page="settings">⚙️ Settings</button>
+    </nav>
+
+    <div class="navbar-right">
+      <button class="account-badge" id="accountBadge">
+        <img id="navHead" class="nav-head" src="" alt="" />
+        <span id="navNick">Brak konta</span>
+        <span class="chev">▾</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ===== HOME PAGE ===== -->
+  <main class="page" id="page-home">
+    <section class="profile-card">
+      <div class="profile-card-top">
+        <img id="homeHead" class="profile-head" src="" alt="" />
+        <div class="profile-info">
+          <div class="profile-name-row">
+            <h1 id="homeNick">Brak konta</h1>
+            <span class="badge-online" id="statusBadge">Offline</span>
+          </div>
+          <div class="profile-sub">📁 Profil: <b id="homeProfileName">Brak profilu</b></div>
+        </div>
+      </div>
+
+      <div class="chip-row" id="homeChipRow"></div>
+
+      <button class="profile-row" id="openProfile">
+        <span id="homeProfileRowLabel">📁 Wybierz profil</span>
+        <span>›</span>
+      </button>
+
+      <div class="spacer"></div>
+
+      <div class="play-row">
+        <button class="play-btn" id="playBtn">
+          <span class="play-icon">▶</span> PLAY
+        </button>
+        <button class="log-btn" id="viewLogsBtn" title="Zobacz logi uruchamiania">📄</button>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== PROFILES PAGE ===== -->
+  <main class="page hidden" id="page-profiles">
+    <section class="profiles-panel">
+      <div class="profiles-header">
+        <h2>Profile</h2>
+        <button id="addProfileBtn" class="primary-btn">+ Dodaj profil</button>
+      </div>
+      <p class="muted">Kliknij profil lewym przyciskiem, by go wybrać. Kliknij prawym, by otworzyć menu opcji.</p>
+
+      <div class="profiles-grid" id="profilesGrid"></div>
+    </section>
+  </main>
+
+  <!-- ===== ACCOUNTS PAGE ===== -->
+  <main class="page hidden" id="page-accounts">
+    <section class="accounts-panel">
+      <h2>Konta</h2>
+      <p class="muted">Dodaj konto, aby móc zagrać. Na razie obsługiwany jest tryb offline (nick).</p>
+
+      <div class="add-account-row">
+        <input type="text" id="nickInput" maxlength="16" placeholder="Wpisz nick (max 16 znaków)" />
+        <button id="addAccountBtn">+ Dodaj konto</button>
+      </div>
+      <div class="error-msg" id="accountError"></div>
+
+      <button class="microsoft-btn" id="loginMicrosoftBtn">
+        <span>🪟</span> Zaloguj przez Microsoft (Premium)
+      </button>
+      <div class="error-msg" id="microsoftError"></div>
+
+      <p class="muted">Kliknij prawym na konto, żeby otworzyć jego opcje (skin, peleryny).</p>
+
+      <div class="accounts-list" id="accountsList"></div>
+    </section>
+  </main>
+
+  <!-- ===== SETTINGS PAGE ===== -->
+  <main class="page hidden" id="page-settings">
+    <section class="placeholder-panel">
+      <h2>Ustawienia</h2>
+      <p class="muted">Klucz API CurseForge jest potrzebny tylko, jeśli chcesz przeglądać mody z CurseForge (Modrinth działa bez klucza).</p>
+
+      <label class="field-label">Klucz API CurseForge</label>
+      <div class="add-account-row">
+        <input type="text" id="cfKeyInput" placeholder="Wklej swój klucz API..." />
+        <button id="saveCfKeyBtn">Zapisz</button>
+      </div>
+      <div class="error-msg" id="cfKeyMsg"></div>
+      <p class="muted small">Klucz można uzyskać na <b>console.curseforge.com</b> po założeniu konta dewelopera.</p>
+
+      <label class="field-label" style="margin-top:20px;">Ścieżka do Java (opcjonalnie — zaawansowane)</label>
+      <p class="muted small" style="margin-top:0;">MelonClient sam sprawdza, czy masz odpowiednią Javę, a jeśli nie — <b>pobiera własną automatycznie</b> przy pierwszym uruchomieniu danej wersji. Nie musisz nic instalować ręcznie. To pole ustaw tylko, jeśli chcesz wymusić konkretną instalację Javy.</p>
+      <div class="add-account-row">
+        <input type="text" id="javaPathInput" placeholder="np. C:\Program Files\Java\jdk-21\bin\java.exe (zostaw puste dla automatu)" />
+        <button id="saveJavaPathBtn">Zapisz</button>
+      </div>
+      <div class="error-msg" id="javaPathMsg"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span class="footer-left"><span class="dot"></span> Wszystko działa</span>
+    <span class="footer-center">© 2026 MelonClient</span>
+    <span class="footer-version">Wersja 1.3.0</span>
+  </footer>
+
+  <!-- ===== MODAL: DODAJ PROFIL ===== -->
+  <div class="modal-overlay hidden" id="addProfileModal">
+    <div class="modal">
+      <h3>Nowy profil</h3>
+
+      <label class="field-label">Nazwa profilu</label>
+      <input type="text" id="newProfileName" placeholder="np. Modowany SMP" />
+
+      <label class="field-label">Wersja Minecraft</label>
+      <select id="newProfileVersion"><option>Ładowanie wersji...</option></select>
+      <label class="checkbox-row">
+        <input type="checkbox" id="showSnapshotsCheckbox" />
+        Pokaż też snapshoty (wersje testowe)
+      </label>
+
+      <label class="field-label">Loader</label>
+      <select id="newProfileLoader">
+        <option value="vanilla">Vanilla</option>
+        <option value="fabric">Fabric</option>
+        <option value="forge">Forge</option>
+        <option value="quilt">Quilt</option>
+      </select>
+
+      <label class="field-label">Ikona profilu (opcjonalnie)</label>
+      <div class="icon-picker-row">
+        <div class="icon-preview" id="iconPreview">🧱</div>
+        <button type="button" class="ghost-btn" id="pickIconBtn">Wybierz obraz</button>
+        <button type="button" class="ghost-btn" id="clearIconBtn">Usuń</button>
+      </div>
+
+      <div class="error-msg" id="newProfileError"></div>
+
+      <div class="modal-actions">
+        <button class="ghost-btn" id="cancelAddProfile">Anuluj</button>
+        <button class="primary-btn" id="confirmAddProfile">Utwórz profil</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MENU KONTEKSTOWE PROFILU ===== -->
+  <div class="context-menu hidden" id="profileContextMenu">
+    <button data-action="options">⚙️ Opcje</button>
+    <button data-action="launch">▶ Uruchom</button>
+    <button data-action="openFolder">📂 Otwórz Folder</button>
+    <button data-action="rename">✏️ Zmień nazwę</button>
+    <button data-action="delete" class="danger">🗑️ Usuń</button>
+  </div>
+
+  <!-- ===== MODAL: OPCJE PROFILU ===== -->
+  <div class="modal-overlay hidden" id="optionsModal">
+    <div class="modal modal-wide">
+      <div class="modal-header-row">
+        <h3 id="optionsProfileTitle">Opcje profilu</h3>
+        <button class="close-x" id="closeOptionsModal">✕</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="general">Ogólne</button>
+        <button class="tab-btn" data-tab="mods">Mody</button>
+      </div>
+
+      <!-- TAB: OGÓLNE -->
+      <div class="tab-panel" id="tab-general">
+        <label class="field-label">Loader</label>
+        <select id="optLoader">
+          <option value="vanilla">Vanilla</option>
+          <option value="fabric">Fabric</option>
+          <option value="forge">Forge</option>
+          <option value="quilt">Quilt</option>
+        </select>
+
+        <label class="field-label">Pamięć RAM (GB)</label>
+        <div class="ram-row">
+          <div>
+            <span class="ram-label">Min: <b id="ramMinVal">2</b> GB</span>
+            <input type="range" id="ramMin" min="1" max="16" step="1" />
+          </div>
+          <div>
+            <span class="ram-label">Max: <b id="ramMaxVal">4</b> GB</span>
+            <input type="range" id="ramMax" min="1" max="16" step="1" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="primary-btn" id="saveGeneralOptions">Zapisz zmiany</button>
+        </div>
+      </div>
+
+      <!-- TAB: MODY -->
+      <div class="tab-panel hidden" id="tab-mods">
+        <div class="mods-source-row">
+          <label class="field-label">Źródło:</label>
+          <select id="modSource">
+            <option value="modrinth">Modrinth</option>
+            <option value="curseforge">CurseForge</option>
+          </select>
+          <input type="text" id="modSearchInput" placeholder="Szukaj moda..." />
+          <button id="modSearchBtn" class="primary-btn">Szukaj</button>
+        </div>
+        <div class="error-msg" id="modSearchError"></div>
+
+        <div class="mods-results" id="modsResults"></div>
+
+        <div class="mods-add-row">
+          <span id="modsSelectedCount" class="muted">Wybrano: 0</span>
+          <button class="primary-btn" id="addModsBtn">Dodaj mody</button>
+        </div>
+
+        <h4 class="installed-title">Zainstalowane mody</h4>
+        <div class="mods-installed" id="modsInstalled"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: ZMIEŃ NAZWĘ ===== -->
+  <div class="modal-overlay hidden" id="renameModal">
+    <div class="modal">
+      <h3>Zmień nazwę profilu</h3>
+      <input type="text" id="renameInput" placeholder="Nowa nazwa" />
+      <div class="error-msg" id="renameError"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="cancelRename">Anuluj</button>
+        <button class="primary-btn" id="confirmRename">Zapisz</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: URUCHAMIANIE MINECRAFTA ===== -->
+  <div class="modal-overlay hidden" id="launchModal">
+    <div class="modal modal-wide">
+      <h3 id="launchModalTitle">Uruchamianie...</h3>
+      <div class="muted" id="launchStatus">Przygotowywanie...</div>
+      <div class="launch-log" id="launchLog"></div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="clearLogBtn">🧹 Wyczyść</button>
+        <button class="ghost-btn" id="copyLogBtn">📋 Kopiuj</button>
+        <span class="spacer"></span>
+        <button class="ghost-btn" id="closeLaunchModal">Zamknij</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MENU KONTEKSTOWE KONTA ===== -->
+  <div class="context-menu hidden" id="accountContextMenu">
+    <button data-action="options">⚙️ Opcje (skin, peleryny)</button>
+    <button data-action="select">✅ Wybierz</button>
+    <button data-action="delete" class="danger">🗑️ Usuń</button>
+  </div>
+
+  <!-- ===== MODAL: OPCJE KONTA (skin + peleryny) ===== -->
+  <div class="modal-overlay hidden" id="accountOptionsModal">
+    <div class="modal modal-wide">
+      <div class="modal-header-row">
+        <h3 id="accountOptionsTitle">Opcje konta</h3>
+        <button class="close-x" id="closeAccountOptionsModal">✕</button>
+      </div>
+
+      <label class="field-label">Własny skin (.png)</label>
+      <div class="icon-picker-row">
+        <div class="icon-preview" id="accountSkinPreview">🧑</div>
+        <button type="button" class="ghost-btn" id="pickAccountSkinBtn">Wybierz i zastosuj</button>
+      </div>
+      <p class="muted small" id="accountSkinNote"></p>
+      <div class="error-msg" id="accountSkinError"></div>
+
+      <div id="capesSection" class="hidden">
+        <label class="field-label" style="margin-top:20px;">Peleryny Minecraft (Premium)</label>
+        <div class="mods-results" id="capesList"></div>
+        <div class="error-msg" id="capesError"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

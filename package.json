@@ -1,0 +1,65 @@
+{
+  "name": "melonclient",
+  "productName": "MelonClient",
+  "version": "1.5.0",
+  "description": "Prosty klient Minecraft (Electron + Node.js) — MelonClient",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux"
+  },
+  "author": "MelonClient",
+  "license": "MIT",
+  "dependencies": {
+    "minecraft-launcher-core": "^3.18.1",
+    "msmc": "^5.0.0"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.melonclient.app",
+    "productName": "MelonClient",
+    "directories": {
+      "output": "dist_installer",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "src/assets/icon.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "displayLanguageSelector": true,
+      "multiLanguageInstaller": true,
+      "installerLanguages": ["en_US", "pl_PL"],
+      "language": "1033",
+      "installerIcon": "src/assets/icon.ico",
+      "uninstallerIcon": "src/assets/icon.ico",
+      "installerHeaderIcon": "build/installerHeaderIcon.ico",
+      "installerSidebar": "build/installerSidebar.bmp",
+      "uninstallDisplayName": "MelonClient",
+      "include": "build/installer.nsh"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "icon": "src/assets/logo.png",
+      "category": "Game",
+      "executableName": "melonclient"
+    }
+  }
+}
