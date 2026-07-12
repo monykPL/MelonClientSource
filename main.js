@@ -16,6 +16,36 @@ try {
   MSMC = null; // biblioteka nie jest jeszcze zainstalowana (npm install)
 }
 
+/* =========================================================
+   BEZPIECZEŃSTWO: globalne przechwytywanie nieobsłużonych błędów.
+   Bez tego jeden nieprzewidziany wyjątek (np. z biblioteki MCLC/MSMC)
+   pokazywał natywne okno "A JavaScript error occurred in the main
+   process", które potrafiło zablokować cały proces tak mocno, że
+   nawet Menadżer Zadań / taskkill nie dawały rady go zamknąć.
+   Teraz błąd trafia do konsoli w aplikacji zamiast crashować całość.
+========================================================= */
+process.on('uncaughtException', (err) => {
+  console.error('Nieobsłużony wyjątek:', err);
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('minecraft:error', `BŁĄD (nieobsłużony wyjątek): ${err && err.message ? err.message : String(err)}`);
+    }
+  } catch (e2) { /* ignorujemy - nie chcemy crashować w handlerze crasha */ }
+  runningGameProcess = null;
+  runningGameProfileId = null;
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('Nieobsłużone odrzucenie obietnicy:', reason);
+  try {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const msg = reason && reason.message ? reason.message : String(reason);
+      mainWindow.webContents.send('minecraft:error', `BŁĄD (nieobsłużone odrzucenie): ${msg}`);
+    }
+  } catch (e2) { /* ignorujemy */ }
+  runningGameProcess = null;
+  runningGameProfileId = null;
+});
+
 const ACCOUNTS_FILE = path.join(app.getPath('userData'), 'accounts.json');
 const PROFILES_FILE = path.join(app.getPath('userData'), 'profiles.json');
 const SETTINGS_FILE = path.join(app.getPath('userData'), 'settings.json');
@@ -856,7 +886,14 @@ ipcMain.handle('minecraft:launch', async (event, profileId) => {
         root: instanceDir,
         version: versionOpt,
         memory: { max: `${profile.ram.max}G`, min: `${profile.ram.min}G` },
-        javaPath: resolvedJavaPath
+        javaPath: resolvedJavaPath,
+        overrides: {
+          // Bez tego limitu MCLC próbuje otworzyć NIEOGRANICZONĄ liczbę połączeń/plików
+          // naraz przy pobieraniu assetów, co na Windows kończy się crashem "EMFILE: too
+          // many open files". 16 jednoczesnych pobrań to bezpieczny limit, który jednocześnie
+          // pobiera zauważalnie szybciej niż seryjnie, jedno po drugim.
+          maxSockets: 16
+        }
       };
       if (forgeJarPath) opts.forge = forgeJarPath;
 

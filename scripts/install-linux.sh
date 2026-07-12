@@ -17,7 +17,7 @@
 
 set -e
 
-GITHUB_REPO="TWOJ_NICK/melonclient"   # <-- PODMIEŃ na swoje repo z Releases
+GITHUB_REPO="monykPL/MelonClientSource"
 INSTALL_DIR="$HOME/.local/share/MelonClient"
 BIN_DIR="$HOME/.local/bin"
 DESKTOP_DIR="$HOME/.local/share/applications"
