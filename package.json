@@ -1,7 +1,7 @@
 {
   "name": "melonclient",
   "productName": "MelonClient",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Prosty klient Minecraft (Electron + Node.js) — MelonClient",
   "main": "main.js",
   "scripts": {
@@ -13,7 +13,8 @@
   "license": "MIT",
   "dependencies": {
     "minecraft-launcher-core": "^3.18.1",
-    "msmc": "^5.0.0"
+    "msmc": "^5.0.0",
+    "jimp": "^0.22.12"
   },
   "devDependencies": {
     "electron": "^31.0.0",

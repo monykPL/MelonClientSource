@@ -1,6 +1,3 @@
-/* =========================================================
-   NAWIGACJA
-========================================================= */
 const navLinks = document.querySelectorAll('.nav-link');
 const pages = {
   home: document.getElementById('page-home'),
@@ -32,9 +29,6 @@ function initials(name) {
   return (name || '?').trim().slice(0, 2).toUpperCase();
 }
 
-/* =========================================================
-   KONTA
-========================================================= */
 let accountsState = { accounts: [], activeId: null };
 
 async function refreshAccounts() {
@@ -50,7 +44,7 @@ function renderNavbar() {
   const active = getActiveAccount();
   const navNick = document.getElementById('navNick');
   const navHead = document.getElementById('navHead');
-  if (active) { navNick.textContent = active.nickname; navHead.src = active.localSkinPath || headUrl(active.nickname); }
+  if (active) { navNick.textContent = active.nickname; navHead.src = active.localSkinHeadPath || headUrl(active.nickname); }
   else { navNick.textContent = 'Dodaj konto'; navHead.src = ''; }
 }
 function renderAccountsList() {
@@ -67,7 +61,7 @@ function renderAccountsList() {
     const row = document.createElement('div');
     row.className = 'account-item' + (acc.id === accountsState.activeId ? ' selected' : '');
     row.innerHTML = `
-      <img src="${acc.localSkinPath || headUrl(acc.nickname)}" alt="" />
+      <img src="${acc.localSkinHeadPath || headUrl(acc.nickname)}" alt="" />
       <span class="acc-name">${escapeHtml(acc.nickname)}</span>
       <span class="acc-tag">${acc.type === 'offline' ? 'Offline' : 'Microsoft'}</span>
       <button class="select-btn" data-id="${acc.id}">${acc.id === accountsState.activeId ? 'Wybrane' : 'Wybierz'}</button>
@@ -166,7 +160,7 @@ function openAccountOptionsModal(accountId) {
   document.getElementById('accountSkinError').textContent = '';
 
   const preview = document.getElementById('accountSkinPreview');
-  const localOrHead = account.localSkinPath || headUrl(account.nickname);
+  const localOrHead = account.localSkinHeadPath || headUrl(account.nickname);
   preview.innerHTML = `<img src="${localOrHead}" alt="" />`;
 
   const note = document.getElementById('accountSkinNote');
@@ -282,7 +276,7 @@ function renderHome() {
 
   if (active) {
     homeNick.textContent = active.nickname;
-    homeHead.src = active.localSkinPath || headUrl(active.nickname);
+    homeHead.src = active.localSkinHeadPath || headUrl(active.nickname);
     statusBadge.textContent = 'Online';
     statusBadge.classList.remove('offline');
   } else {
@@ -352,7 +346,6 @@ function renderProfilesGrid() {
   grid.appendChild(addTile);
 }
 
-/* ----- Pobieranie listy wersji Minecrafta z Mojang (pełna historia + opcjonalnie snapshoty) ----- */
 let allVersionsManifest = [];
 
 async function loadMcVersions() {
@@ -363,7 +356,7 @@ async function loadMcVersions() {
     if (allVersionsManifest.length === 0) {
       const res = await fetch('https://piston-meta.mojang.com/mc/game/version_manifest_v2.json');
       const json = await res.json();
-      allVersionsManifest = json.versions; // posortowane od najnowszej
+      allVersionsManifest = json.versions;
     }
     mcVersions = allVersionsManifest.filter(v => showSnapshots ? (v.type === 'release' || v.type === 'snapshot') : v.type === 'release');
     select.innerHTML = mcVersions.map(v => `<option value="${v.id}">${v.id}${v.type === 'snapshot' ? ' (snapshot)' : ''}</option>`).join('');
@@ -373,7 +366,6 @@ async function loadMcVersions() {
 }
 document.getElementById('showSnapshotsCheckbox').addEventListener('change', loadMcVersions);
 
-/* ----- Modal: dodaj profil ----- */
 const addProfileModal = document.getElementById('addProfileModal');
 let pickedIconPath = null;
 function openAddProfileModal() {
@@ -414,7 +406,6 @@ document.getElementById('confirmAddProfile').addEventListener('click', async () 
   } catch (e) { errBox.textContent = cleanErr(e); }
 });
 
-/* ----- Menu kontekstowe ----- */
 const contextMenu = document.getElementById('profileContextMenu');
 let contextMenuProfileId = null;
 
@@ -467,7 +458,6 @@ async function doLaunch(id) {
   }
 }
 
-/* ----- Modal logów uruchamiania ----- */
 const launchModal = document.getElementById('launchModal');
 function openLaunchModal(profileName) {
   document.getElementById('launchModalTitle').textContent = `Uruchamianie — ${profileName}`;
@@ -494,7 +484,6 @@ document.getElementById('copyLogBtn').addEventListener('click', async () => {
   }
 });
 
-/* Otwiera ten sam modal, ale WYŁĄCZNIE do podglądu istniejących logów - nie czyści ich i nic nie uruchamia */
 function openLogsModal() {
   const hasLogs = document.getElementById('launchLog').children.length > 0;
   document.getElementById('launchModalTitle').textContent = 'Logi uruchamiania';
@@ -507,7 +496,7 @@ document.getElementById('viewLogsBtn').addEventListener('click', openLogsModal);
 
 function colorizeLogLine(rawLine) {
   let escaped = escapeHtml(rawLine);
-  // Kolejność ważna: najpierw błędy, potem konflikty/ostrzeżenia, na końcu "dobre" komunikaty
+
   const rules = [
     { regex: /(BŁĄD|błąd|error|exception|fatal|failed|could not|crash(?:ed)?)/gi, cls: 'log-error' },
     { regex: /(warn(?:ing)?s?|duplicate|conflict(?:s)?|deprecated|already exists|konflikt|nadpisz)/gi, cls: 'log-warn' },
@@ -556,7 +545,6 @@ window.minecraftAPI.onError((msg) => {
   updatePlayButtonVisual();
 });
 
-/* ----- Modal: zmień nazwę ----- */
 const renameModal = document.getElementById('renameModal');
 let renameProfileId = null;
 function openRenameModal(id) {
@@ -576,10 +564,9 @@ document.getElementById('confirmRename').addEventListener('click', async () => {
   } catch (e) { errBox.textContent = cleanErr(e); }
 });
 
-/* ----- Modal: opcje profilu (Ogólne + Mody) ----- */
 const optionsModal = document.getElementById('optionsModal');
 let optionsProfileId = null;
-let selectedMods = new Map(); // key `${source}:${id}` -> mod object
+let selectedMods = new Map();
 
 function openOptionsModal(id) {
   optionsProfileId = id;
@@ -631,7 +618,6 @@ document.getElementById('saveGeneralOptions').addEventListener('click', async ()
   optionsModal.classList.add('hidden');
 });
 
-/* ----- Wyszukiwanie modów ----- */
 document.getElementById('modSearchBtn').addEventListener('click', searchMods);
 document.getElementById('modSearchInput').addEventListener('keydown', e => { if (e.key === 'Enter') searchMods(); });
 
@@ -757,9 +743,6 @@ function renderInstalledMods(profile) {
   });
 }
 
-/* =========================================================
-   USTAWIENIA (CurseForge API key)
-========================================================= */
 async function loadSettingsPage() {
   const s = await window.settingsAPI.get();
   document.getElementById('cfKeyInput').value = s.curseforgeApiKey || '';
@@ -805,9 +788,6 @@ document.getElementById('playBtn').addEventListener('click', async () => {
   doLaunch(profile.id);
 });
 
-/* =========================================================
-   START
-========================================================= */
 (async () => {
   await refreshAccounts();
   await refreshProfiles();

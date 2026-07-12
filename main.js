@@ -6,31 +6,30 @@ let MLC = null;
 try {
   MLC = require('minecraft-launcher-core');
 } catch (e) {
-  MLC = null; // biblioteka nie jest jeszcze zainstalowana (npm install)
+  MLC = null;
 }
 
 let MSMC = null;
 try {
   MSMC = require('msmc');
 } catch (e) {
-  MSMC = null; // biblioteka nie jest jeszcze zainstalowana (npm install)
+  MSMC = null;
 }
 
-/* =========================================================
-   BEZPIECZEŃSTWO: globalne przechwytywanie nieobsłużonych błędów.
-   Bez tego jeden nieprzewidziany wyjątek (np. z biblioteki MCLC/MSMC)
-   pokazywał natywne okno "A JavaScript error occurred in the main
-   process", które potrafiło zablokować cały proces tak mocno, że
-   nawet Menadżer Zadań / taskkill nie dawały rady go zamknąć.
-   Teraz błąd trafia do konsoli w aplikacji zamiast crashować całość.
-========================================================= */
+let Jimp = null;
+try {
+  Jimp = require('jimp');
+} catch (e) {
+  Jimp = null;
+}
+
 process.on('uncaughtException', (err) => {
   console.error('Nieobsłużony wyjątek:', err);
   try {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('minecraft:error', `BŁĄD (nieobsłużony wyjątek): ${err && err.message ? err.message : String(err)}`);
     }
-  } catch (e2) { /* ignorujemy - nie chcemy crashować w handlerze crasha */ }
+  } catch (e2) {  }
   runningGameProcess = null;
   runningGameProfileId = null;
 });
@@ -41,7 +40,7 @@ process.on('unhandledRejection', (reason) => {
       const msg = reason && reason.message ? reason.message : String(reason);
       mainWindow.webContents.send('minecraft:error', `BŁĄD (nieobsłużone odrzucenie): ${msg}`);
     }
-  } catch (e2) { /* ignorujemy */ }
+  } catch (e2) {  }
   runningGameProcess = null;
   runningGameProfileId = null;
 });
@@ -106,10 +105,6 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
 });
 
-/* =========================================================
-   KONTA (zapisywane trwale w pliku accounts.json)
-========================================================= */
-
 ipcMain.handle('accounts:list', () => loadAccounts());
 
 ipcMain.handle('accounts:add', (event, nickname) => {
@@ -153,10 +148,6 @@ ipcMain.handle('accounts:select', (event, id) => {
   return data;
 });
 
-/* =========================================================
-   LOGOWANIE MICROSOFT (konta Premium)
-========================================================= */
-
 ipcMain.handle('accounts:loginMicrosoft', async () => {
   if (!MSMC) {
     throw new Error('Brak biblioteki "msmc". Uruchom w terminalu "npm install", zamknij i odpal aplikację ponownie.');
@@ -164,10 +155,10 @@ ipcMain.handle('accounts:loginMicrosoft', async () => {
 
   const { Auth } = MSMC;
   const authManager = new Auth('select_account');
-  // Otwiera natywne okno logowania Microsoft (Electron) - użytkownik loguje się normalnie jak w oficjalnym launcherze
+
   const xboxManager = await authManager.launch('electron');
   const token = await xboxManager.getMinecraft();
-  const mclcToken = token.mclc(); // gotowy obiekt autoryzacji zgodny z minecraft-launcher-core
+  const mclcToken = token.mclc();
 
   const data = loadAccounts();
   let account = data.accounts.find(a => a.uuid && a.uuid === mclcToken.uuid);
@@ -178,16 +169,12 @@ ipcMain.handle('accounts:loginMicrosoft', async () => {
   account.type = 'microsoft';
   account.nickname = mclcToken.name;
   account.uuid = mclcToken.uuid;
-  account.mclcToken = mclcToken; // ważny ok. 24h - jeśli wygaśnie, trzeba się zalogować ponownie
+  account.mclcToken = mclcToken;
 
   data.activeId = account.id;
   saveAccounts(data);
   return data;
 });
-
-/* =========================================================
-   SKINY I PELERYNY
-========================================================= */
 
 ipcMain.handle('accounts:pickSkin', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -199,13 +186,30 @@ ipcMain.handle('accounts:pickSkin', async () => {
   return result.filePaths[0];
 });
 
+async function generateHeadFromSkin(skinPath, destPath) {
+  if (!Jimp) throw new Error('Brak biblioteki "jimp" - uruchom "npm install" i spróbuj ponownie.');
+
+  const img = await Jimp.read(skinPath);
+  const face = img.clone().crop(8, 8, 8, 8);
+
+  try {
+    const hat = img.clone().crop(40, 8, 8, 8);
+    face.composite(hat, 0, 0);
+  } catch (e) {
+
+  }
+
+  face.resize(128, 128, Jimp.RESIZE_NEAREST_NEIGHBOR);
+  await face.writeAsync(destPath);
+}
+
 ipcMain.handle('accounts:setSkin', async (event, accountId, filePath, variant) => {
   const data = loadAccounts();
   const account = data.accounts.find(a => a.id === accountId);
   if (!account) throw new Error('Nie znaleziono konta.');
 
   if (account.type === 'microsoft' && account.mclcToken) {
-    // Konto Premium - realny upload na serwery Mojanga. Widoczne dla WSZYSTKICH graczy, zawsze.
+
     const buf = fs.readFileSync(filePath);
     const form = new FormData();
     form.append('variant', variant === 'slim' ? 'slim' : 'classic');
@@ -231,6 +235,15 @@ ipcMain.handle('accounts:setSkin', async (event, accountId, filePath, variant) =
     const dest = path.join(skinsDir, `${account.id}.png`);
     fs.copyFileSync(filePath, dest);
     account.localSkinPath = `file://${dest.split(path.sep).join('/')}`;
+
+    const headDest = path.join(skinsDir, `${account.id}-head.png`);
+    try {
+      await generateHeadFromSkin(dest, headDest);
+      account.localSkinHeadPath = `file://${headDest.split(path.sep).join('/')}`;
+    } catch (err) {
+
+      delete account.localSkinHeadPath;
+    }
   }
 
   saveAccounts(data);
@@ -270,10 +283,6 @@ ipcMain.handle('accounts:setActiveCape', async (event, accountId, capeId) => {
   if (!res.ok) throw new Error(`BŁĄD: nie udało się ustawić peleryny (status ${res.status}).`);
   return { ok: true };
 });
-
-/* =========================================================
-   PROFILE (zapisywane trwale w pliku profiles.json)
-========================================================= */
 
 function newId() {
   return `${Date.now().toString()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -324,7 +333,7 @@ ipcMain.handle('profiles:add', (event, payload) => {
       fs.copyFileSync(payload.iconPath, dest);
       profile.iconUrl = `file://${dest.replace(/\\/g, '/')}`;
     } catch (e) {
-      // jeśli kopiowanie ikony się nie uda, po prostu tworzymy profil bez ikony
+
     }
   }
 
@@ -394,10 +403,6 @@ ipcMain.handle('profiles:removeMod', (event, id, modId, source) => {
   return data;
 });
 
-/* =========================================================
-   USTAWIENIA
-========================================================= */
-
 ipcMain.handle('settings:get', () => loadSettings());
 
 ipcMain.handle('settings:setCurseForgeKey', (event, key) => {
@@ -453,7 +458,7 @@ function verifyJava(javaPath) {
     const out = execFileSync(bin, ['-version'], { timeout: 8000, encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] });
     return { ok: true, info: out.toString().trim() };
   } catch (e) {
-    // "java -version" pisze na stderr, ale jeśli komenda w ogóle wystartowała, to dalej jest OK
+
     if (e.stderr) return { ok: true, info: String(e.stderr).trim() };
     return { ok: false, error: e.message || String(e) };
   }
@@ -473,22 +478,17 @@ function parseJavaMajor(versionOutput) {
 function requiredJavaFor(mcVersion) {
   const v = mcVersion || '';
   // Snapshoty (np. "25w03a") nie pasują do formatu x.y.z - we współczesnych snapshotach
-  // niemal zawsze wymagana jest najnowsza Java, więc zakładamy 21.
+
   if (/^\d{2}w\d{2}[a-z]$/i.test(v)) return 21;
 
   const parts = v.split('.').map(n => parseInt(n, 10));
   const minor = parts[1] || 0;
   const patch = parts[2] || 0;
-  if (minor > 20 || (minor === 20 && patch >= 5)) return 21; // 1.20.5+
-  if (minor >= 18) return 17; // 1.18 - 1.20.4
-  if (minor === 17) return 16; // 1.17.x
-  return 8; // starsze wersje
+  if (minor > 20 || (minor === 20 && patch >= 5)) return 21;
+  if (minor >= 18) return 17;
+  if (minor === 17) return 16;
+  return 8;
 }
-
-/* =========================================================
-   AUTOMATYCZNE POBIERANIE JAVY (tak jak robi to oficjalny
-   launcher Mojanga) - nikt nie musi ręcznie instalować Javy.
-========================================================= */
 
 const JAVA_MANIFEST_URL = 'https://launchermeta.mojang.com/v1/products/java-runtime/2ec0cc96c44e5a76b9c8b7c39df7210883d12871/all.json';
 
@@ -630,29 +630,22 @@ ipcMain.handle('minecraft:kill', async () => {
 
   try {
     if (process.platform === 'win32') {
-      // /T zabija całe drzewo procesów (przydatne, bo java.exe czasem odpala dodatkowe procesy), /F wymusza
+
       execFileSync('taskkill', ['/PID', String(pid), '/T', '/F']);
     } else {
       try {
-        process.kill(-pid, 'SIGKILL'); // spróbuj zabić całą grupę procesów
+        process.kill(-pid, 'SIGKILL');
       } catch (e) {
         runningGame.proc.kill('SIGKILL');
       }
     }
   } catch (e) {
-    // proces mógł się już zamknąć w międzyczasie - to nie jest błąd krytyczny
+
   }
 
   runningGame = { proc: null, profileId: null };
   return { killed: true };
 });
-
-/* =========================================================
-   FABRIC / QUILT - automatyczne pobranie profilu loadera
-   (ten sam mechanizm co oficjalne launchery: pobieramy gotowy,
-   scalony plik wersji z API loadera i podajemy go do MCLC jako
-   "custom" wersję)
-========================================================= */
 
 async function ensureLoaderVersionJson(metaBase, mcVersion, instanceDir, sendLog, loaderLabel) {
   const listRes = await fetch(`${metaBase}/versions/loader/${encodeURIComponent(mcVersion)}`);
@@ -676,11 +669,6 @@ async function ensureLoaderVersionJson(metaBase, mcVersion, instanceDir, sendLog
   sendLog(`OK: przygotowano ${loaderLabel} ${loaderVersion} dla Minecrafta ${mcVersion}.`);
   return customId;
 }
-
-/* =========================================================
-   FORGE - automatyczne pobranie instalatora (MCLC sam uruchamia
-   jego processory instalacyjne, gdy podamy ścieżkę do jara)
-========================================================= */
 
 async function ensureForgeInstaller(mcVersion, sendLog) {
   const promoRes = await fetch('https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json');
@@ -709,12 +697,6 @@ async function ensureForgeInstaller(mcVersion, sendLog) {
 
   return jarPath;
 }
-
-/* =========================================================
-   MODY - pobieranie i instalowanie faktycznych plików .jar
-   (wcześniej tylko zapisywaliśmy metadane - to naprawia,
-   żeby dodane mody realnie trafiały do gry)
-========================================================= */
 
 async function ensureModsInstalled(profile, instanceDir, sendLog) {
   if (!profile.mods || profile.mods.length === 0) return;
@@ -808,15 +790,12 @@ ipcMain.handle('minecraft:launch', async (event, profileId) => {
   if (!profile) throw new Error('Nie znaleziono profilu.');
   if (!account) throw new Error('Najpierw dodaj i wybierz konto w zakładce Accounts.');
 
-  // Cała reszta (rozwiązanie Javy - w tym ewentualne pobranie - i sam start gry)
-  // działa w tle, żeby wywołanie z renderera nie czekało kilku minut na odpowiedź.
   (async () => {
     try {
       const settings = loadSettings();
       const requiredMajor = requiredJavaFor(profile.version);
       let resolvedJavaPath = null;
 
-      // 1) Ręczna ścieżka z Settings, jeśli ustawiona i wystarczająca
       if (settings.javaPath) {
         const manualCheck = verifyJava(settings.javaPath);
         if (manualCheck.ok) {
@@ -832,7 +811,6 @@ ipcMain.handle('minecraft:launch', async (event, profileId) => {
         }
       }
 
-      // 2) Systemowa Java z PATH, jeśli wystarczająca
       if (!resolvedJavaPath) {
         const systemCheck = verifyJava(null);
         if (systemCheck.ok) {
@@ -844,8 +822,6 @@ ipcMain.handle('minecraft:launch', async (event, profileId) => {
         }
       }
 
-      // 3) W ostateczności - MelonClient POBIERA WŁASNĄ Javę automatycznie.
-      //    Dzięki temu ani Ty, ani osoby którym udostępnisz klienta, nie muszą niczego instalować ręcznie.
       if (!resolvedJavaPath) {
         resolvedJavaPath = await ensureBundledJava(
           requiredMajor,
@@ -888,10 +864,7 @@ ipcMain.handle('minecraft:launch', async (event, profileId) => {
         memory: { max: `${profile.ram.max}G`, min: `${profile.ram.min}G` },
         javaPath: resolvedJavaPath,
         overrides: {
-          // Bez tego limitu MCLC próbuje otworzyć NIEOGRANICZONĄ liczbę połączeń/plików
-          // naraz przy pobieraniu assetów, co na Windows kończy się crashem "EMFILE: too
-          // many open files". 16 jednoczesnych pobrań to bezpieczny limit, który jednocześnie
-          // pobiera zauważalnie szybciej niż seryjnie, jedno po drugim.
+
           maxSockets: 16
         }
       };
