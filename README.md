@@ -1,3 +1,6 @@
+# LICENSE
+[MIT License](https://opensource.org/license/mit)
+
 # MelonClient
 A Minecraft Laucnher/Client that works like lunar client + prism launcher 
 
